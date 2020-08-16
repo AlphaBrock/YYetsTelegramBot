@@ -3,9 +3,11 @@ import time
 
 from alipay import AliPay
 import config
+
 import datetime
 import random
 
+logger = config.setup_log()
 try:
     alipay = AliPay(
         appid=config.appid,
@@ -15,7 +17,7 @@ try:
         sign_type="RSA2",
     )
 except Exception as e:
-    config.logger1.exception('alifacepay.Alipay对象创建失败，请检查公钥和密钥是否配置正确，抛出异常:{}'.format(e))
+    logger.exception('对象创建失败，请检查公钥和密钥是否配置正确，抛出异常:{}'.format(e))
 
 
 def get_trade_id():
@@ -39,7 +41,7 @@ def submit(price, subject, trade_id):
             total_amount=price,
             qr_code_timeout_express=config.PAY_TIMEOUT
         )
-        config.logger1.info("submit order_string:{}".format(order_string))
+        logger.info("订单:{}，订单提交结果:{}".format(trade_id, order_string))
         if order_string['msg'] == 'Success':
             return_data = {
                 'status': 'Success',
@@ -47,14 +49,14 @@ def submit(price, subject, trade_id):
             }
             return return_data
         else:
-            config.logger1.error("alifacepay.submit 提交订单失败，返回结果:{}".format(order_string))
+            logger.error("订单:{}，提交失败，返回结果:{}".format(trade_id, order_string))
             return_data = {
                 'status': 'Failed',
                 'data': 'API请求失败'
             }
             return return_data
     except Exception as e:
-        config.logger1.exception("alifacepay.submit 支付宝当面付API请求失败,抛出异常:{}".format(e))
+        logger.exception("订单:{}，支付宝当面付API请求失败,抛出异常:{}".format(trade_id, e))
         return_data = {
             'status': 'Failed',
             'data': 'API请求失败'
@@ -77,24 +79,28 @@ def check_donate(out_trade_no):
     :param out_trade_no:
     :return:
     """
-    paid = False
-    status = ''
-    for i in range(50):
-        time.sleep(5)
-        result = alipay.api_alipay_trade_query(out_trade_no=out_trade_no)
-        config.logger1.info("alifacepay.check_donate result:{}".format(result))
-        if result.get("trade_status", "") == "TRADE_SUCCESS":
-            config.logger1.info("alifacepay.check_donate 支付成功，向用户发送信息")
-            paid = True
-            status = "支付成功"
-            break
+    try:
+        paid = False
+        status = ''
+        for i in range(6):
+            time.sleep(20)
+            result = alipay.api_alipay_trade_query(out_trade_no=out_trade_no)
+            logger.info("订单:{}，查询返回结果:{}".format(out_trade_no, result))
+            if result.get("trade_status", "") == "TRADE_SUCCESS":
+                logger.info("订单:{}，支付成功，向用户发送信息".format(out_trade_no))
+                paid = True
+                status = "支付成功"
+                break
 
-    if paid is False:
-        alipay.api_alipay_trade_cancel(out_trade_no=out_trade_no)
-        config.logger1.error("alifacepay.check_donate 超时未支付，取消订单")
-        status = "超时未支付"
+        if paid is False:
+            alipay.api_alipay_trade_cancel(out_trade_no=out_trade_no)
+            logger.error("订单:{}，超时未支付，取消订单".format(out_trade_no))
+            status = "超时未支付"
 
-    return status
+        return status
+    except Exception as e:
+        logger.exception("订单:{}查询出错，抛出异常:{}".format(out_trade_no, e))
+        return "exception"
 
 
 if __name__ == '__main__':

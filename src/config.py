@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 import logging
+import os
+import re
+from logging.handlers import TimedRotatingFileHandler
 
 TGBOT_TOKEN = "1311855454:AAF2ehpHguJ3CSlvyWbm-M_RGvb4g9z4DMo"
 
@@ -32,21 +35,59 @@ UserAgent = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/42.0.2311.135 Safari/537.36 Edge/13.10586'
 ]
 
-fmt = logging.Formatter(fmt="%(asctime)s %(levelname)s %(message)s", datefmt='%Y-%m-%d %H:%M:%S')
-sh = logging.StreamHandler()  # 往屏幕上输出
-sh.setFormatter(fmt)  # 设置屏幕上显示的格式
-logger1 = logging.Logger(name='alert', level=logging.DEBUG)
-logger1.addHandler(sh)
-
 # 支付宝配置信息
 # appid
-appid="xxxxxxxxxxxxxxxx"
+appid = "2021001187689362"
 
 # 订单超时时间
-PAY_TIMEOUT = '20m'
+PAY_TIMEOUT = '2m'
 
 # 应用私钥
 app_private_key_string = "-----BEGIN RSA PRIVATE KEY-----\n填写自己生成的应用密钥\n-----END RSA PRIVATE KEY-----"
 
 # 支付宝公钥，验证支付宝回传消息使用，不是你自己的公钥,
 alipay_public_key_string = "-----BEGIN PUBLIC KEY-----\n填写支付宝公钥\n-----END PUBLIC KEY-----"
+
+
+# 示例格式 注意\n
+# alipay_public_key_string = "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAw9QbJi++cm2HjinPpllj3Hmep8nxO9MVu0BTSP1XM1wF666g6sTwQ0VXyRJENpYEs0KFE/XnMKilV/+uQY7xH4SqcdX2T4C5DkiWJ4egD2Tk3yLH6fjq7TqCsMqG3osfk6U93H+XdiWKKff+nwQ6LnUIEYWoMIh/fyqTYtlKzBTUg8nJWoqfkspFWlt69PrbosbAFWY7vp+3CapO/o4Qw+thuhGKAvEZWmNy3hUnnThStos+T8qI/Qqs5f9zb9wIDAQAB\n-----END PUBLIC KEY-----"
+
+
+# 设定日志输出
+def setup_log():
+    """
+    日志打印方式
+    :return:
+    """
+    # 本方法创建下默认的日志存放文件
+    log_dir = "/root/YYetsTelegramBot/log/"
+    log_name = "YYetsTelegramBot.log"
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+    if not os.path.exists("{}/{}".format(log_dir, log_name)):
+        os.system(r"touch {}/{}".format(log_dir, log_name))
+
+    logger = logging.getLogger(log_name)
+    # 请自行修改路径
+    log_path = os.path.join(log_dir, log_name)
+    # 设置日志记录等级
+    logger.setLevel(logging.INFO)
+    # interval 滚动周期，
+    # when="MIDNIGHT", interval=1 表示每天0点为更新点，每天生成一个文件
+    # backupCount  表示日志保存个数
+    file_handler = TimedRotatingFileHandler(
+        filename=log_path, when="MIDNIGHT", interval=1, backupCount=30
+    )
+    # filename="mylog" suffix设置，会生成文件名为mylog.2020-02-25.log
+    file_handler.suffix = "%Y-%m-%d.log"
+    # extMatch是编译好正则表达式，用于匹配日志文件名后缀
+    # 需要注意的是suffix和extMatch一定要匹配的上，如果不匹配，过期日志不会被删除。
+    file_handler.extMatch = re.compile(r"^\d{4}-\d{2}-\d{2}.log$")
+    # 定义日志输出格式
+    file_handler.setFormatter(
+        logging.Formatter(
+            "[%(asctime)s] [%(process)d] [%(levelname)s] [%(module)s.%(funcName)s] [%(filename)s:%(lineno)d] %(message)s"
+        )
+    )
+    logger.addHandler(file_handler)
+    return logger

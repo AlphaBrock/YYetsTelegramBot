@@ -18,24 +18,7 @@
     ```
     TOKEN = 'Your TOKEN'
     ```
-4. 添加启动服务
-   创建单元文件：vim /lib/systemd/system/yyetsbot.service 自行替换输入如下信息
-   ```
-   [Unit]	
-    Description=A Telegram Bot for querying YYets
-    After=network.target network-online.target nss-lookup.target	
-    
-    [Service]	
-    Restart=on-failure	
-    Type=simple	
-    ExecStart=/usr/bin/python3 /root/YYetsTelegramBot/src/main.py	
-    
-    [Install]	
-    WantedBy=multi-user.target
-   ```
-   重新载入 daemon、自启、启动
-   ```
-    systemctl daemon-reload
-    systemctl enable yyetsbot.service
-    systemctl start yyetsbot.service
+4. 启动服务
     ```
+   nohup /usr/bin/python3 /root/YYetsTelegramBot/src/main.py &
+   ```
