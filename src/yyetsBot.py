@@ -75,32 +75,66 @@ def search_resource(video_id):
         return text['data'].get('list')
 
 
+def search_top_resource(top_num):
+    """
+    这里根据ID查询资源信息，获取包含了剧集，下载链接信息
+    :param video_id:
+    :return:
+    """
+    url = "http://pc.zmzapi.com/index.php"
+
+    params = {
+        "g": "api/pv3",
+        "m": "index",
+        "client": "5",
+        "accesskey": "519f9cab85c8059d17544947k361a827",
+        "a": "hot",
+        "limit": "{}".format(top_num)
+    }
+    headers = {
+        'User-Agent': '{}'.format(random.choice(config.UserAgent))
+    }
+
+    response = requests.request("GET", url, params=params, headers=headers)
+    text = json.loads(response.text)
+    # 处理返回数据
+    if text['status'] != 1:
+        logger.warning("搜索top{}无结果，返回如下信息:{}".format(top_num, response.text))
+        return None
+    else:
+        return text['data']
+
+
 def download_poster(name):
     """
     下载视频海报
     :param name:
     :return:
     """
-    data = show_resource(name)
-    if data is not None:
-        img_data = []
-        for i in data:
-            id = i[0]
-            poster_url = i[1]
-            cnname = i[2]
-            channel_cn = i[3]
-            headers = {
-                'User-Agent': '{}'.format(random.choice(config.UserAgent))
-            }
-            response = requests.request("GET", poster_url, headers=headers, verify=False)
-            if response.status_code == 200:
-                img_data.append([id, channel_cn, cnname, response.content])
-                logger.info("资源类型:{},资源名称:{} 提交下载任务正常".format(channel_cn, cnname))
-            else:
-                logger.warning("提交下载任务异常，返回结果:{}".format(response.text))
-        return img_data
-    else:
-        logger.warning("搜索资源无结果")
+    try:
+        data = show_resource(name)
+        if data is not None:
+            img_data = []
+            for i in data:
+                id = i[0]
+                poster_url = i[1]
+                cnname = i[2]
+                channel_cn = i[3]
+                headers = {
+                    'User-Agent': '{}'.format(random.choice(config.UserAgent))
+                }
+                response = requests.request("GET", poster_url, headers=headers, verify=False)
+                if response.status_code == 200:
+                    img_data.append([id, channel_cn, cnname, response.content])
+                    logger.info("资源类型:{},资源名称:{} 提交下载任务正常".format(channel_cn, cnname))
+                else:
+                    logger.warning("提交下载任务异常，返回结果:{}".format(response.text))
+            return img_data
+        else:
+            logger.warning("搜索资源无结果")
+            return None
+    except Exception as e:
+        logger.exception("下载海报出错，抛出异常:{}".format(e))
         return None
 
 
@@ -264,6 +298,52 @@ def get_movie_link(videoID):
         logger.exception('资源ID:{}，获取电影下载链接失败，抛出异常:{}'.format(videoID, e))
 
 
+def get_top_list(top_type, top_num):
+    """
+    获取下排行影视
+    :param top_type:
+    :param top_num:
+    :return:
+    """
+    data = search_top_resource(top_num)
+    if data is None:
+        return None
+    else:
+        top_list = []
+        if top_type == "总榜":
+            total_list = data.get('total_list')
+            for i in range(len(total_list)):
+                cnname = str(i + 1) + ". " + str(total_list[i].get('cnname'))
+                print(cnname)
+                top_list.append(cnname)
+        elif top_type == "本月":
+            movie_list = data.get('movie_list')
+            for i in range(len(movie_list)):
+                cnname = str(i + 1) + ". " + str(movie_list[i].get('cnname'))
+                top_list.append(cnname)
+        elif top_type == "电影":
+            movie_total = data.get('movie_total')
+            for i in range(len(movie_total)):
+                cnname = str(i + 1) + ". " + str(movie_total[i].get('cnname'))
+                top_list.append(cnname)
+        elif top_type == "日剧":
+            japan_list = data.get('japan_list')
+            for i in range(len(japan_list)):
+                cnname = str(i + 1) + ". " + str(japan_list[i].get('cnname'))
+                top_list.append(cnname)
+        elif top_type == "新剧":
+            new_list = data.get('new_list')
+            for i in range(len(new_list)):
+                cnname = str(i + 1) + ". " + str(new_list[i].get('cnname'))
+                top_list.append(cnname)
+        elif top_type == "今日":
+            today_list = data.get('today_list')
+            for i in range(len(today_list)):
+                cnname = str(i + 1) + ". " + str(today_list[i].get('cnname'))
+                top_list.append(cnname)
+        return '\n'.join(top_list)
+
+
 if __name__ == '__main__':
     name = "神盾局"
     tv_video_id = "30675"
@@ -274,4 +354,4 @@ if __name__ == '__main__':
     # get_tv_link(tv_video_id, seasonCount, episodeCount)
     # get_episode_count(seasonCount, tv_video_id)
     # search_resource(tv_video_id)
-    get_movie_link(mv_video_id)
+    get_top_list("总榜", "5")
